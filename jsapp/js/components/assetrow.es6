@@ -26,7 +26,8 @@ class AssetRow extends React.Component {
     super(props);
     this.state = {
       tags: this.props.tags,
-      clearPopover: false
+      clearPopover: false,
+      popoverVisible: false
     };
     autoBind(this);
   }
@@ -85,14 +86,21 @@ class AssetRow extends React.Component {
     evt.preventDefault();
   }
   clearPopover () {
-    this.setState({
-      clearPopover: true,
-    });
+    if (this.state.popoverVisible) {
+      this.setState({clearPopover: true, popoverVisible: false});
+    }
+  }
+  popoverSetVisible () {
+    this.setState({popoverVisible: true});
+  }
+  onDrop (files) {
+    if (files.length === 0)
+      return;
+
+    this.dropFiles(files, [], {url: this.props.url});
   }
   render () {
     var selfowned = this.props.owner__username === this.props.currentUsername;
-
-    var isPublic = this.props.owner__username === anonUsername;
     var _rc = this.props.summary && this.props.summary.row_count || 0;
 
     var hrefTo = `/forms/${this.props.uid}`,
@@ -101,12 +109,15 @@ class AssetRow extends React.Component {
         ownedCollections = [], 
         parent = undefined;
 
-    var isDeployable = this.props.asset_type && this.props.asset_type === 'survey';
+    var isDeployable = this.props.asset_type && this.props.asset_type === 'survey' && this.props.deployed_version_id === null;
 
-    var userCanEdit = false;
-    if (selfowned || this.props.access.change[this.props.currentUsername] || stores.session.currentAccount.is_superuser)
-      userCanEdit = true;
-      
+    const userCanEdit = this.userCan('change_asset', this.props);
+  
+    if (this.props.has_deployment && this.props.deployment__active && 
+        this.userCan('view_submissions', this.props)) {
+      hrefTo = `/forms/${this.props.uid}/summary`;
+    } 
+
     if (this.isLibrary()) {
       hrefTo = `/library/${this.props.uid}/edit`;
       parent = this.state.parent || undefined;
@@ -273,7 +284,8 @@ class AssetRow extends React.Component {
             <ui.PopoverMenu type='assetrow-menu' 
                         triggerLabel={<i className="k-icon-more" />} 
                         triggerTip={t('More Actions')}
-                        clearPopover={this.state.clearPopover}>
+                        clearPopover={this.state.clearPopover}
+                        popoverSetVisible={this.popoverSetVisible}>
 
               { this.props.asset_type && this.props.asset_type === 'survey' && userCanEdit && isDeployable &&
                 <bem.PopoverMenu__link 
@@ -281,11 +293,21 @@ class AssetRow extends React.Component {
                     data-action={'deploy'} 
                     data-asset-type={this.props.kind}>
                   <i className="k-icon-deploy" />
-                  {this.props.deployed_version_id === null ? t('Deploy this project') : t('Redeploy this project')}
+                  {t('Deploy this project')}
+                </bem.PopoverMenu__link>
+              }
+              { this.props.asset_type && this.props.asset_type === 'survey' && this.props.has_deployment && !this.props.deployment__active && userCanEdit &&
+                <bem.PopoverMenu__link
+                      m={'unarchive'}
+                      data-action={'unarchive'}
+                      data-asset-type={this.props.kind}
+                    >
+                  <i className="k-icon-archived" />
+                  {t('Unarchive')}
                 </bem.PopoverMenu__link>
               }
               { this.props.asset_type && this.props.asset_type === 'survey' && userCanEdit &&
-                <Dropzone onDrop={this.dropFiles}
+                <Dropzone onDrop={this.onDrop}
                           multiple={false} 
                           className='dropzone'
                           accept={validFileTypes()}>
@@ -309,7 +331,6 @@ class AssetRow extends React.Component {
                     </bem.PopoverMenu__link>
                   );
               })}
-
               { this.props.asset_type && this.props.asset_type != 'survey' && ownedCollections.length > 0 &&
                 <bem.PopoverMenu__heading>
                   {t('Move to')}
@@ -336,7 +357,6 @@ class AssetRow extends React.Component {
                   })}
                 </bem.PopoverMenu__moveTo>
               }
-
               { this.props.asset_type && this.props.asset_type === 'survey' && this.props.has_deployment && this.props.deployment__active && userCanEdit &&
                 <bem.PopoverMenu__link
                       m={'archive'}
@@ -347,7 +367,6 @@ class AssetRow extends React.Component {
                   {t('Archive')}
                 </bem.PopoverMenu__link>
               }
-
               {userCanEdit &&
                 <bem.PopoverMenu__link
                       m={'delete'}
@@ -366,6 +385,7 @@ class AssetRow extends React.Component {
 };
 
 reactMixin(AssetRow.prototype, mixins.droppable);
+reactMixin(AssetRow.prototype, mixins.permissions);
 reactMixin(AssetRow.prototype, mixins.contextRouter);
 
 AssetRow.contextTypes = {

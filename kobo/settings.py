@@ -107,6 +107,12 @@ MIDDLEWARE_CLASSES = (
     'hub.middleware.OtherFormBuilderRedirectMiddleware',
 )
 
+# Warn developers to use `pytest` instead of `./manage.py test`
+class DoNotUseRunner(object):
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError('Please run tests with `pytest` instead')
+TEST_RUNNER = __name__ + '.DoNotUseRunner'
+
 # used in kpi.models.sitewide_messages
 MARKITUP_FILTER = ('markdown.markdown', {'safe_mode': False})
 
@@ -131,6 +137,7 @@ ANONYMOUS_USER_ID = -1
 ALLOWED_ANONYMOUS_PERMISSIONS = (
     'kpi.view_collection',
     'kpi.view_asset',
+    'kpi.view_submissions',
 )
 
 # run heavy migration scripts by default
@@ -251,9 +258,9 @@ TEMPLATE_CONTEXT_PROCESSORS = global_settings.TEMPLATE_CONTEXT_PROCESSORS + (
 #if not DEBUG:
 #    STATICFILES_STORAGE = 'whitenoise.django.GzipManifestStaticFilesStorage'
 
-TRACKJS_TOKEN = os.environ.get('TRACKJS_TOKEN')
 GOOGLE_ANALYTICS_TOKEN = os.environ.get('GOOGLE_ANALYTICS_TOKEN')
 INTERCOM_APP_ID = os.environ.get('INTERCOM_APP_ID')
+RAVEN_JS_DSN = os.environ.get('RAVEN_JS_DSN')
 
 # replace this with the pointer to the kobocat server, if it exists
 KOBOCAT_URL = os.environ.get('KOBOCAT_URL', 'http://kobocat/')
@@ -409,7 +416,7 @@ if os.environ.get('DEFAULT_FROM_EMAIL'):
     SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 KOBO_SUPPORT_URL = os.environ.get('KOBO_SUPPORT_URL', 'http://help.kobotoolbox.org/')
-KOBO_SUPPORT_EMAIL = os.environ.get('KOBO_SUPPORT_EMAIL') or os.environ.get('DEFAULT_FROM_EMAIL', 'support@kobotoolbox.org')
+KOBO_SUPPORT_EMAIL = os.environ.get('KOBO_SUPPORT_EMAIL') or os.environ.get('DEFAULT_FROM_EMAIL', 'help@kobotoolbox.org')
 
 if os.environ.get('AWS_ACCESS_KEY_ID'):
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -552,5 +559,5 @@ else:
     MONGO_CONNECTION_URL = "mongodb://%(HOST)s:%(PORT)s" % MONGO_DATABASE
 
 MONGO_CONNECTION = MongoClient(
-    MONGO_CONNECTION_URL, j=True, tz_aware=True)
+    MONGO_CONNECTION_URL, j=True, tz_aware=True, connect=False)
 MONGO_DB = MONGO_CONNECTION[MONGO_DATABASE['NAME']]

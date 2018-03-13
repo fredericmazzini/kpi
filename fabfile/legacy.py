@@ -2,7 +2,7 @@ import json
 import os
 import sys
 
-from fabric.api import cd, env, prefix, run
+from fabric.api import cd, env, prefix, run, settings
 
 def kobo_workon(venv_name):
     return prefix('kobo_workon %s' % venv_name)
@@ -85,7 +85,6 @@ def deploy_ref(deployment_name, ref, force=False):
 
     with cd(env.kpi_path):
         with kobo_workon(env.kpi_virtualenv_name):
-            run("bower install")
             run("npm install")
             run("gulp copy")
             run("npm run build")
@@ -99,7 +98,10 @@ def deploy_ref(deployment_name, ref, force=False):
         run("date > LAST_UPDATE.txt")
 
     run("sudo restart kpi_celeryd")
-    run("sudo restart kpi_sync_kobocat_xforms_celeryd")
+    with settings(warn_only=True):
+        # Job is often stopped, which triggers a non-zero return code from
+        # `restart` and fails the whole deployment
+        run("sudo restart kpi_sync_kobocat_xforms_celeryd")
     run("sudo service uwsgi reload")
 
 

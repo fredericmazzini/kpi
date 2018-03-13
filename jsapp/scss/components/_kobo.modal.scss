@@ -2,7 +2,7 @@
   position: fixed;
   height: 100%;
   width: 100%;
-  z-index: 20;
+  z-index: 1001;
   top: 0px;
   left: 0px;
   background-color: rgba(0, 0, 0, 0.4) !important;
@@ -107,7 +107,15 @@
   text-align: right;
 
   button {
-    @extend .mdl-button, .mdl-button--colored, .mdl-button--raised;
+    @extend .mdl-button;
+
+    &.primary {
+      @extend .mdl-button--colored, .mdl-button--raised;
+    }
+
+    &.reset {
+      @extend .mdl-button--colored, .mdl-button--danger;
+    }
 
     text-transform: uppercase;
     padding-left: 40px;
@@ -139,9 +147,28 @@
     overflow: visible;
   }
 
-  .submission-pager {
-    text-align: center;
+  .form-modal__group {
+    display: flex;
+    justify-content: space-between;
 
+    &--validation-status {
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 20px;
+
+      input {
+        min-width: 100px;
+      }
+
+      .Select {
+        margin-left: 10px;
+        text-align: left;
+        min-width: 120px;
+      }
+    }
+  }
+
+  .submission-pager {
     a {
       display: inline-block;
       cursor: pointer;
@@ -154,6 +181,10 @@
     width: 100%;
     margin: 20px 0px;
     text-align: left;
+
+    thead tr {
+      border-bottom: 1px solid $divider-color;
+    }
 
     thead th {
       font-weight: 600;
@@ -191,6 +222,57 @@
       img {
         max-width: 100%;
       }
+    }
+
+    .submission--repeat-group {
+      background: #F8F8F8;
+      padding: 0px 30px;
+
+      table {
+        background: #FFF;
+      }
+    }
+
+    .submission--group {
+      background: #F8F8F8;
+
+      h4 {
+        margin: 0px;
+      }
+    }
+
+    .submission--end-group {
+      background: $divider-color;
+      padding-top: 1px;
+      padding-bottom: 0px;
+    }
+  }
+
+  .submission--warning {
+    margin-bottom: 30px;
+    padding: 10px;
+    background: #F5F5F5;
+    text-align: center;
+    line-height: 1em;
+
+    i {
+      color: #FFB775;
+      font-size: 40px;
+      margin-right: 10px;
+      vertical-align: middle;
+      display: inline-block;
+    }
+
+    span {
+      line-height: 1.4em;
+      display: inline-block;
+      vertical-align: middle;
+      width: calc(100% - 60px);
+    }
+
+    + .submission--warning {
+      margin-top: -30px;
+      border-top: 1px solid $divider-color;
     }
   }
 }

@@ -31,6 +31,7 @@ RUN if ! diff "${KPI_SRC_DIR}/dependencies/apt_requirements.txt" /srv/tmp/base__
 ###########################
 
 COPY ./dependencies/pip/external_services.txt "${KPI_SRC_DIR}/dependencies/pip/"
+WORKDIR ${PIP_DIR}/
 # Only install if the current version of `dependencies/pip/external_services.txt` differs from the one used in the base image.
 RUN if ! diff "${KPI_SRC_DIR}/dependencies/pip/external_services.txt" /srv/tmp/base__external_services.txt; then \
         pip-sync "${KPI_SRC_DIR}/dependencies/pip/external_services.txt" 1>/dev/null \
@@ -42,22 +43,11 @@ RUN if ! diff "${KPI_SRC_DIR}/dependencies/pip/external_services.txt" /srv/tmp/b
 ##########################################
 
 COPY ./package.json "${KPI_SRC_DIR}/"
+WORKDIR ${KPI_SRC_DIR}/
 # Only install if the current version of `package.json` differs from the one used in the base image.
 RUN if ! diff "${KPI_SRC_DIR}/package.json" /srv/tmp/base_package.json; then \
         # Try error-prone `npm install` step twice.
         npm install --quiet || npm install --quiet \
-    ; fi
-
-
-##########################################
-# Install any additional Bower packages. #
-##########################################
-
-COPY ./bower.json ./.bowerrc "${KPI_SRC_DIR}/"
-# Only install if the current versions of `bower.json` or `.bowerrc` differ from the ones used in the base image.
-RUN if ! diff "${KPI_SRC_DIR}/bower.json" /srv/tmp/base_bower.json && \
-            ! diff "${KPI_SRC_DIR}/.bowerrc" /srv/tmp/base_bowerrc; then \
-        bower install --quiet --allow-root --config.interactive=false \
     ; fi
 
 
@@ -82,7 +72,6 @@ RUN mkdir "${BUILD_DIR}" && \
 
 RUN gulp copy && npm run build
 
-
 ###############################################
 # Copy over this directory in its current state. #
 ###############################################
@@ -92,7 +81,6 @@ COPY . "${KPI_SRC_DIR}"
 
 # Restore the backed-up package installation directories.
 RUN ln -s "${KPI_NODE_PATH}" "${KPI_SRC_DIR}/node_modules" && \
-    ln -s "${BOWER_COMPONENTS_DIR}/" "${KPI_SRC_DIR}/jsapp/xlform/components" && \
     ln -s "${BUILD_DIR}" "${KPI_SRC_DIR}/jsapp/compiled" && \
     ln -s "${FONTS_DIR}" "${KPI_SRC_DIR}/jsapp/fonts" && \
     ln -s "${WEBPACK_STATS_PATH}" webpack-stats.json
