@@ -345,6 +345,7 @@ class MockDataExports(TestCase):
         export_task.run()
         self.assertEqual(export_task.status, ExportTask.COMPLETE)
         result = export_task.result
+        self.assertTrue(result.storage.exists(result.name))
         # Make an excessive amount of additional exports
         excess_count = 5 + settings.MAXIMUM_EXPORTS_PER_USER_PER_FORM
         for _ in range(excess_count):
@@ -364,7 +365,7 @@ class MockDataExports(TestCase):
         export_task.run()
         self.assertEqual(export_task.status, ExportTask.COMPLETE)
         # Verify the cleanup
-        self.assertFalse(result.storage.exists(result.path))
+        self.assertFalse(result.storage.exists(result.name))
         self.assertListEqual( # assertSequenceEqual isn't working...
             list(export_tasks_to_keep.values_list('pk', flat=True)),
             list(ExportTask._filter_by_source_kludge(
@@ -466,27 +467,3 @@ class MockDataExports(TestCase):
         ]
         self.run_csv_export_test(
             expected_lines, {'fields_from_all_versions': 'false'})
-
-    def test_temporary_test_of_formpack_issue_163_patch(self):
-
-        # FIXME: Flesh this out and move it into formpack
-
-        from formpack import FormPack
-
-        schemas = [
-         {'content': {u'schema': u'1',
-           u'survey': [{u'label': [u'first but not one'],
-             'name': u'first_but_not_one',
-             u'type': u'text'},
-            {u'label': [u'one'], 'name': u'one', u'type': u'text'},
-            {u'label': [u'third'], 'name': u'third', u'type': u'text'}]},
-          'version': u'v8wZaeXndV3KpfYkaHLjxC'},
-         {'content': {u'schema': u'1',
-           u'survey': [{u'label': [u'one'], 'name': u'one', u'type': u'text'}]},
-          'version': u'vwjRCb6B7Mje2iRbeW2iyQ'}
-        ]
-
-        fp = FormPack(schemas)
-
-        # Will raise IndexError if patch is not applied
-        fp.get_fields_for_versions(fp.versions.keys())
