@@ -21,18 +21,32 @@ import {
 class Submission extends React.Component {
   constructor(props) {
     super(props);
+    let translations = this.props.asset.content.translations,
+        translationOptions = [];
+
+    if (translations.length > 1) {
+      translationOptions = translations.map((trns, i) => {
+        return {
+          value: trns,
+          label: trns || t('Unnamed language')
+        }
+      });
+    }
 
     this.state = {
       submission: {},
       loading: true,
       error: false,
       enketoEditLink: false,
-      previous: -1, 
+      previous: -1,
       next: -1,
       sid: props.sid,
       showBetaFieldsWarning: false,
-      promptRefresh: false
+      promptRefresh: false,
+      translationIndex: 0,
+      translationOptions: translationOptions
     };
+
     autoBind(this);
   }
   componentDidMount() {
@@ -60,10 +74,23 @@ class Submission extends React.Component {
 
       if (this.props.ids && sid) {
         const c = this.props.ids.findIndex(k => k==sid);
-        if (c > 0)
+        let tableInfo = this.props.tableInfo || false,
+            nextAvailable = false;
+        if (this.props.ids[c - 1])
           prev = this.props.ids[c - 1];
-        if (c < this.props.ids.length)
+        if (this.props.ids[c + 1])
           next = this.props.ids[c + 1];
+
+        // table submissions pagination
+        if (tableInfo) {
+          const nextAvailable = tableInfo.resultsTotal > (tableInfo.currentPage + 1) * tableInfo.pageSize;
+          if (c + 1 === this.props.ids.length && nextAvailable) {
+            next = -2;
+          }
+
+          if (tableInfo.currentPage > 0 && prev == -1)
+            prev = -2;
+        }
       }
 
       const survey = this.props.asset.content.survey;
@@ -84,7 +111,7 @@ class Submission extends React.Component {
         this.setState({error: error.statusText, loading: false});
       else
         this.setState({error: t('Error: could not load data.'), loading: false});
-    });    
+    });
   }
 
   componentWillReceiveProps(nextProps) {
@@ -129,7 +156,10 @@ class Submission extends React.Component {
 
     var kc_server = document.createElement('a');
     kc_server.href = this.props.asset.deployment__identifier;
-    var kc_base = kc_server.origin;
+    // if this has more components than /{username}/forms/{uid}, it's safe to assume kobocat is running under a
+    // KOBOCAT_ROOT_URI_PREFIX
+    const kc_prefix = kc_server.pathname.split('/').length > 4 ? '/' + kc_server.pathname.split('/')[1] : '';
+    var kc_base = `${kc_server.origin}${kc_prefix}`;
 
     // build media attachment URL using the KC endpoint
     attachmentUrl = `${kc_base}/attachment/original?media_file=${encodeURI(filename)}`;
@@ -151,16 +181,38 @@ class Submission extends React.Component {
     this.getSubmission(this.props.asset.uid, this.props.sid);
     this.setState({
       promptRefresh: false
-    });    
+    });
   }
 
   switchSubmission(evt) {
+    this.setState({ loading: true});
     const sid = evt.target.getAttribute('data-sid');
     stores.pageState.showModal({
       type: 'submission',
       sid: sid,
       asset: this.props.asset,
-      ids: this.props.ids
+      ids: this.props.ids,
+      tableInfo: this.props.tableInfo || false
+    });
+  }
+
+  prevTablePage() {
+    this.setState({ loading: true});
+
+    stores.pageState.showModal({
+      type: 'submission',
+      sid: false,
+      page: 'prev'
+    });
+  }
+
+  nextTablePage() {
+    this.setState({ loading: true});
+
+    stores.pageState.showModal({
+      type: 'submission',
+      sid: false,
+      page: 'next'
     });
   }
 
@@ -169,9 +221,17 @@ class Submission extends React.Component {
     actions.resources.updateSubmissionValidationStatus(this.props.asset.uid, this.state.sid, data);
   }
 
+  languageChange(e) {
+    let index = this.state.translationOptions.findIndex(x => x==e);
+    this.setState({
+      translationIndex: index || 0
+    });
+  }
+
   responseDisplayHelper(q, s, overrideValue = false, name) {
     if (!q) return false;
     const choices = this.props.asset.content.choices;
+    let translationIndex = this.state.translationIndex;
 
     var submissionValue = s[name];
 
@@ -181,15 +241,19 @@ class Submission extends React.Component {
     switch(q.type) {
       case 'select_one':
         const choice = choices.find(x => x.list_name == q.select_from_list_name && x.name === submissionValue);
-        if (choice && choice.label && choice.label[0])
-          return choice.label[0];
+        if (choice && choice.label && choice.label[translationIndex])
+          return choice.label[translationIndex];
+        else
+          return submissionValue;
         break;
       case 'select_multiple':
         var responses = submissionValue.split(' ');
         var list = responses.map((r)=> {
           const choice = choices.find(x => x.list_name == q.select_from_list_name && x.name === r);
-          if (choice && choice.label && choice.label[0])
-            return <li key={r}>{choice.label[0]}</li>;
+          if (choice && choice.label && choice.label[translationIndex])
+            return <li key={r}>{choice.label[translationIndex]}</li>;
+          else
+            return <li key={r}>{r}</li>;
         })
         return <ul>{list}</ul>;
         break;
@@ -206,6 +270,7 @@ class Submission extends React.Component {
   renderRows() {
     const s = this.state.submission,
           survey = this.props.asset.content.survey,
+          translationIndex = this.state.translationIndex,
           _this = this;
     var parentGroup = false;
     const groupTypes = ['begin_score', 'begin_rank', 'begin_group'];
@@ -213,13 +278,13 @@ class Submission extends React.Component {
 
     return survey.map((q)=> {
       var name = q.name || q.$autoname || q.$kuid;
-      if (q.type === 'begin_repeat') { 
+      if (q.type === 'begin_repeat') {
         return (
           <tr key={`row-${name}`}>
             <td colSpan="3" className="submission--repeat-group">
               <h4>
                 {t('Repeat group: ')}
-                {q.label && q.label[0] ? q.label[0] : t('Unlabelled')}
+                {q.label && q.label[translationIndex] ? q.label[translationIndex] : t('Unlabelled')}
               </h4>
               {s[name] && s[name].map((repQ, i)=> {
                 var response = [];
@@ -236,12 +301,12 @@ class Submission extends React.Component {
                     <tr key={`row-${pN}`}>
                       <td className="submission--question-type">{type}</td>
                       <td className="submission--question">
-                        {subQ.label && subQ.label[0]}
+                        {subQ.label && subQ.label[translationIndex]}
                       </td>
                       <td className="submission--response">
                         {_this.responseDisplayHelper(subQ, s, repQ[pN], pN)}
                       </td>
-                    </tr>      
+                    </tr>
                   );
                 }
                 return (
@@ -266,7 +331,7 @@ class Submission extends React.Component {
           <tr key={`row-${name}`}>
             <td colSpan="3" className="submission--group">
               <h4>
-                {q.label && q.label[0] ? q.label[0] : t('Unlabelled')}
+                {q.label && q.label[translationIndex] ? q.label[translationIndex] : t('Unlabelled group')}
               </h4>
             </td>
           </tr>
@@ -277,7 +342,7 @@ class Submission extends React.Component {
         parentGroup = false;
         return (
           <tr key={`row-${name}-end`}>
-            <td colSpan="3" className="submission--end-group"></td>
+            <td colSpan="3" className="submission--end-group"/>
           </tr>
         );
       }
@@ -296,9 +361,9 @@ class Submission extends React.Component {
       return (
         <tr key={`row-${name}`}>
           <td className="submission--question-type">{type}</td>
-          <td className="submission--question">{q.label[0] || t('Unlabelled')}</td>
+          <td className="submission--question">{q.label[translationIndex] || t('Unlabelled')}</td>
           <td className="submission--response">{response}</td>
-        </tr>      
+        </tr>
       );
     });
   }
@@ -327,6 +392,8 @@ class Submission extends React.Component {
     }
 
     const s = this.state.submission;
+    let translationOptions = this.state.translationOptions;
+
     return (
       <bem.FormModal>
         {this.state.hasBetaQuestion &&
@@ -346,15 +413,26 @@ class Submission extends React.Component {
         }
 
         {this.props.asset.deployment__active &&
-          <bem.FormModal__group m='validation-status'>
-            <label>{t('Validation status')}</label>
-            <Select 
-              disabled={!this.userCan('validate_submissions', this.props.asset)}
-              clearable={false}
-              value={s._validation_status ? s._validation_status.uid : ''}
-              options={VALIDATION_STATUSES}
-              onChange={this.validationStatusChange}>
-            </Select>
+          <bem.FormModal__group>
+            {translationOptions.length > 1 &&
+              <div className="switch--label-language">
+                <label>{t('Language:')}</label>
+                <Select
+                  clearable={false}
+                  value={translationOptions[this.state.translationIndex]}
+                  options={translationOptions}
+                  onChange={this.languageChange} />
+              </div>
+            }
+            <div className="switch--validation-status">
+              <label>{t('Validation status:')}</label>
+              <Select
+                disabled={!this.userCan('validate_submissions', this.props.asset)}
+                clearable={false}
+                value={s._validation_status ? s._validation_status.uid : ''}
+                options={VALIDATION_STATUSES}
+                onChange={this.validationStatusChange} />
+            </div>
           </bem.FormModal__group>
         }
         <bem.FormModal__group>
@@ -368,10 +446,27 @@ class Submission extends React.Component {
               </a>
             }
 
+            {this.state.previous == -2 &&
+              <a onClick={this.prevTablePage}
+                    className="mdl-button mdl-button--colored">
+                <i className="k-icon-prev" />
+                {t('Previous')}
+              </a>
+            }
+
+
             {this.state.next > -1 &&
               <a onClick={this.switchSubmission}
                     className="mdl-button mdl-button--colored"
                     data-sid={this.state.next}>
+                {t('Next')}
+                <i className="k-icon-next" />
+              </a>
+            }
+
+            {this.state.next == -2 &&
+              <a onClick={this.nextTablePage}
+                    className="mdl-button mdl-button--colored">
                 {t('Next')}
                 <i className="k-icon-next" />
               </a>
@@ -381,9 +476,9 @@ class Submission extends React.Component {
           <div className="submission-actions">
             {this.userCan('change_submissions', this.props.asset) && this.state.enketoEditLink &&
               <a href={this.state.enketoEditLink}
-                   onClick={this.promptRefresh}
-                 target="_blank"
-                 className="mdl-button mdl-button--raised mdl-button--colored">
+                onClick={this.promptRefresh}
+                target="_blank"
+                className="mdl-button mdl-button--raised mdl-button--colored">
                 {t('Edit')}
               </a>
             }
@@ -407,33 +502,33 @@ class Submission extends React.Component {
           <tbody>
             {this.renderRows()}
             <tr key={`row-meta`}>
-              <td colSpan="3" className="submission--end-group"></td>
+              <td colSpan="3" className="submission--end-group"/>
             </tr>
 
             {s.start &&
               <tr>
-                <td></td>
+                <td/>
                 <td>{t('start')}</td>
                 <td>{s.start}</td>
               </tr>
             }
             {s.end &&
               <tr>
-                <td></td>
+                <td/>
                 <td>{t('end')}</td>
                 <td>{s.end}</td>
               </tr>
             }
             {s.__version__ &&
               <tr>
-                <td></td>
+                <td/>
                 <td>{t('__version__')}</td>
                 <td>{s.__version__}</td>
               </tr>
             }
             {s['meta/instanceID'] &&
               <tr>
-                <td></td>
+                <td/>
                 <td>{t('instanceID')}</td>
                 <td>{s['meta/instanceID']}</td>
               </tr>

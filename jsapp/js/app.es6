@@ -26,7 +26,6 @@ import {
 import Select from 'react-select';
 import moment from 'moment';
 
-import searches from './searches';
 import actions from './actions';
 
 import stores from './stores';
@@ -56,12 +55,13 @@ import {
   log,
   t,
   assign,
-  isLibrary,
   currentLang
 } from './utils';
 
-import hotkey from 'react-hotkey';
-hotkey.activate();
+import keymap from './keymap'
+import { ShortcutManager, Shortcuts } from 'react-shortcuts'
+const shortcutManager = new ShortcutManager(keymap)
+
 
 function stringifyRoutes(contextRouter) {
   return JSON.stringify(contextRouter.getCurrentRoutes().map(function(r){
@@ -84,19 +84,39 @@ class App extends React.Component {
     // slide out drawer overlay on every page change (better mobile experience)
     if (this.state.pageState.showFixedDrawer)
       stores.pageState.setState({showFixedDrawer: false});
+    // hide modal on every page change
+    if (this.state.pageState.modal)
+      stores.pageState.hideModal();
   }
-  handleHotkey (e) {
-    if (e.altKey && (e.keyCode == '69' || e.keyCode == '186')) {
-      document.body.classList.toggle('hide-edge');
+  componentDidMount () {
+    actions.misc.getServerEnvironment();
+  }
+  _handleShortcuts(action) {
+    switch (action) {
+      case 'EDGE':
+        document.body.classList.toggle('hide-edge')
+        break
+      case 'CLOSE_MODAL':
+        stores.pageState.hideModal()
+        break
     }
+  }
+  getChildContext() {
+    return { shortcuts: shortcutManager }
   }
   render() {
     var assetid = this.props.params.assetid || null;
     return (
       <DocumentTitle title="KoBoToolbox">
-        <div className="mdl-wrapper">
-          { !this.isFormBuilder() && !this.state.pageState.headerHidden && 
-            <div className="k-header__bar"></div>
+        <Shortcuts
+          name='APP_SHORTCUTS'
+          handler={this._handleShortcuts}
+          className="mdl-wrapper"
+          global
+          isolate>
+
+          { !this.isFormBuilder() && !this.state.pageState.headerHidden &&
+            <div className="k-header__bar" />
           }
           <bem.PageWrapper m={{
               'fixed-drawer': this.state.pageState.showFixedDrawer,
@@ -108,7 +128,7 @@ class App extends React.Component {
                 <Modal params={this.state.pageState.modal} />
               }
 
-              { !this.isFormBuilder() && !this.state.pageState.headerHidden && 
+              { !this.isFormBuilder() && !this.state.pageState.headerHidden &&
                 <MainHeader assetid={assetid}/>
               }
               { !this.isFormBuilder() && !this.state.pageState.drawerHidden &&
@@ -125,7 +145,7 @@ class App extends React.Component {
 
               </bem.PageWrapper__content>
           </bem.PageWrapper>
-        </div>
+        </Shortcuts>
       </DocumentTitle>
     );
   }
@@ -135,8 +155,11 @@ App.contextTypes = {
   router: PropTypes.object
 };
 
+App.childContextTypes = {
+  shortcuts: PropTypes.object.isRequired
+}
+
 reactMixin(App.prototype, Reflux.connect(stores.pageState, 'pageState'));
-reactMixin(App.prototype, hotkey.Mixin('handleHotkey'));
 reactMixin(App.prototype, mixins.contextRouter);
 
 class FormJson extends React.Component {
@@ -165,7 +188,7 @@ class FormJson extends React.Component {
             <code>
               { this.state.assetcontent ?
                 JSON.stringify(this.state.assetcontent, null, 4)
-             : null }
+                : null }
             </code>
             </pre>
           </bem.FormView>
@@ -265,7 +288,7 @@ export var routes = (
     <Route path="forms" >
       <IndexRoute component={FormsSearchableList} />
 
-      <Route path="/forms/:assetid"> 
+      <Route path="/forms/:assetid">
         {/*<Route name="form-download" path="download" component={FormDownload} />*/}
         <Route path="json" component={FormJson} />
         <Route path="xform" component={FormXform} />

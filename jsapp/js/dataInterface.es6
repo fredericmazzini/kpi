@@ -27,6 +27,7 @@ var dataInterface;
 
   assign(this, {
     selfProfile: ()=> $ajax({ url: `${rootUrl}/me/` }),
+    serverEnvironment: ()=> $ajax({ url: `${rootUrl}/environment/` }),
     queryUserExistence: (username)=> {
       var d = new $.Deferred();
       $ajax({ url: `${rootUrl}/users/${username}/` })
@@ -162,6 +163,15 @@ var dataInterface;
         method: 'DELETE',
         url: permUrl
       });
+    },
+    copyPermissionsFrom(sourceUid, targetUid) {
+      return $ajax({
+        url: `${rootUrl}/assets/${targetUid}/permissions/`,
+        method: "PATCH",
+        data: {
+          clone_from: sourceUid
+        }
+      })
     },
     assignPerm (creds) {
       // Do we already have these URLs stored somewhere?
@@ -360,7 +370,7 @@ var dataInterface;
         }
       });
     },
-    postCreateBase64EncodedImport (contents) {
+    postCreateImport (contents) {
       var formData = new FormData();
       Object.keys(contents).forEach(function(key){
         formData.append(key, contents[key]);
@@ -431,6 +441,16 @@ var dataInterface;
         url: `${rootUrl}/assets/${uid}/submissions/${sid}/edit?return_url=false`,
         method: 'GET'
       });
+    },
+    setLanguage(data) {
+      return $ajax({
+        url: `${rootUrl}/i18n/setlang/`,
+        method: 'POST',
+        data: data
+      });
+    },
+    environment() {
+      return $ajax({url: `${rootUrl}/environment/`,method: 'GET'});
     },
     login: (creds)=> {
       return $ajax({ url: `${rootUrl}/api-auth/login/?next=/me/`, data: creds, method: 'POST'});

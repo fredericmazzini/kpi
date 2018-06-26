@@ -13,11 +13,13 @@ import {hashHistory} from 'react-router';
 import {
   t,
   assign,
+  notify
 } from '../utils';
 
 import {ProjectSettings} from '../components/formEditors';
 import SharingForm from '../components/sharingForm';
 import Submission from '../components/submission';
+import TableColumnFilter from '../components/tableColumnFilter';
 
 class Modal extends React.Component {
   constructor(props) {
@@ -25,12 +27,13 @@ class Modal extends React.Component {
     this.state = {
       enketopreviewlink: false,
       error: false,
-      modalClass: false
+      modalClass: false,
+      newFormAsset: false
     };
     autoBind(this);
   }
   componentDidMount () {
-  	var type = this.props.params.type;
+    var type = this.props.params.type;
     switch(type) {
       case 'sharing':
         this.setState({
@@ -38,7 +41,7 @@ class Modal extends React.Component {
         });
         break;
       case 'uploading-xls':
-        var filename = this.props.params.file.name || '';
+        var filename = this.props.params.filename || '';
         this.setState({
           title: t('Uploading XLS file'),
           message: t('Uploading: ') + filename
@@ -47,7 +50,7 @@ class Modal extends React.Component {
 
       case 'new-form':
         this.setState({
-          title: t('Create New Project from Scratch')
+          title: `${t('Create New Project')} (${t('step 1 of 2')})`
         });
         break;
       case 'enketo-preview':
@@ -66,13 +69,22 @@ class Modal extends React.Component {
         break;
       case 'submission':
         this.setState({
-          title: t('Record #') + this.props.params.sid,
+          title: this.submissionTitle(this.props),
           modalClass: 'modal-large modal-submission',
           sid: this.props.params.sid
         });
       break;
-
-		}  	
+      case 'replace-xls':
+        this.setState({
+          title: t('Replace with XLS')
+        });
+        break;
+      case 'table-columns':
+        this.setState({
+          title: t('Table display options')
+        });
+      break;
+		}
   }
   createNewForm (settingsComponent) {
     dataInterface.createResource({
@@ -85,8 +97,12 @@ class Modal extends React.Component {
       }),
       asset_type: 'survey',
     }).done((asset) => {
-      hashHistory.push(`/forms/${asset.uid}/edit`);
-      stores.pageState.hideModal();
+      this.setState({
+        newFormAsset: asset,
+        title: `${t('Create New Project')} (${t('step 2 of 2')})`
+      });
+    }).fail(function(r){
+      notify(t('Error: new project could not be created.') + ` (code: ${r.statusText})`);
     });
   }
   enketoSnapshotCreation (data) {
@@ -101,29 +117,62 @@ class Modal extends React.Component {
       });
     }
   }
-
   componentWillReceiveProps(nextProps) {
     if (nextProps.params && nextProps.params.sid) {
       this.setState({
-        title: t('Record #') + nextProps.params.sid,
+        title: this.submissionTitle(nextProps),
         sid: nextProps.params.sid
       });
     }
+
+    if (this.props.params.type != nextProps.params.type && nextProps.params.type === 'uploading-xls') {
+      var filename = nextProps.params.filename || '';
+      this.setState({
+        title: t('Uploading XLS file'),
+        message: t('Uploading: ') + filename
+      });
+    }
+    if (nextProps.params && !nextProps.params.sid) {
+      this.setState({ sid: false });
+    }
+  }
+  submissionTitle(props) {
+    let title = t('Submission Record'),
+        p = props.params,
+        sid = parseInt(p.sid);
+
+    if (p.tableInfo) {
+      let index = p.ids.indexOf(sid) + (p.tableInfo.pageSize * p.tableInfo.currentPage) + 1;
+      title =  `${t('Submission Record')} (${index} ${t('of')} ${p.tableInfo.resultsTotal})`;
+    } else {
+      let index = p.ids.indexOf(sid);
+      title =  `${t('Submission Record')} (${index} ${t('of')} ${p.ids.length})`;
+    }
+
+    return title;
   }
   render() {
   	return (
-	      <ui.Modal open onClose={()=>{stores.pageState.hideModal()}} title={this.state.title} className={this.state.modalClass}>
-	        <ui.Modal.Body>
+      <ui.Modal open onClose={()=>{stores.pageState.hideModal()}} title={this.state.title} className={this.state.modalClass}>
+        <ui.Modal.Body>
 	        	{ this.props.params.type == 'sharing' &&
 	          	<SharingForm uid={this.props.params.assetid} />
 	        	}
             { this.props.params.type == 'new-form' &&
               <ProjectSettings
                 onSubmit={this.createNewForm}
-                submitButtonValue={t('Create project')}
+                submitButtonValue={t('Create Project')}
                 context='newForm'
+                newFormAsset={this.state.newFormAsset}
               />
             }
+            { this.props.params.type == 'replace-xls' &&
+              <ProjectSettings
+                context='replaceXLS'
+                newFormAsset={this.props.params.asset}
+              />
+            }
+
             { this.props.params.type == 'enketo-preview' && this.state.enketopreviewlink &&
               <div className='enketo-holder'>
                 <iframe src={this.state.enketopreviewlink} />
@@ -137,12 +186,12 @@ class Modal extends React.Component {
                 </bem.Loading__inner>
               </bem.Loading>
             }
-            { this.props.params.type == 'enketo-preview' && this.state.error && 
+            { this.props.params.type == 'enketo-preview' && this.state.error &&
               <div>
                 {this.state.message}
               </div>
             }
-            { this.props.params.type == 'uploading-xls' && 
+            { this.props.params.type == 'uploading-xls' &&
               <div>
                 <bem.Loading>
                   <bem.Loading__inner>
@@ -153,13 +202,30 @@ class Modal extends React.Component {
               </div>
             }
 
-            { this.props.params.type == 'submission' && this.state.sid && 
-              <Submission sid={this.state.sid} asset={this.props.params.asset} ids={this.props.params.ids} />
+            { this.props.params.type == 'submission' && this.state.sid &&
+              <Submission sid={this.state.sid}
+                          asset={this.props.params.asset}
+                          ids={this.props.params.ids}
+                          tableInfo={this.props.params.tableInfo || false} />
             }
-
-	        </ui.Modal.Body>
-	      </ui.Modal>
-  		)
+            { this.props.params.type == 'submission' && !this.state.sid &&
+              <div>
+                <bem.Loading>
+                  <bem.Loading__inner>
+                    <i />
+                  </bem.Loading__inner>
+                </bem.Loading>
+              </div>
+            }
+            { this.props.params.type == 'table-columns' &&
+              <TableColumnFilter asset={this.props.params.asset}
+                                 columns={this.props.params.columns}
+                                 getColumnLabel={this.props.params.getColumnLabel}
+                                 overrideLabelsAndGroups={this.props.params.overrideLabelsAndGroups} />
+            }
+        </ui.Modal.Body>
+      </ui.Modal>
+    )
   }
 
 };

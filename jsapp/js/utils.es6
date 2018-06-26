@@ -1,4 +1,3 @@
-
 import moment from 'moment';
 import alertify from 'alertifyjs';
 import $ from 'jquery';
@@ -117,33 +116,16 @@ export function t(str) {
 };
 
 
-// these values may appear in transifex (esp. email) and need to
-// be replaced in all the translations before removing this hard
-// coded value.
 const originalSupportEmail = 'help@kobotoolbox.org';
-const originalSupportUrl = 'http://help.kobotoolbox.org';
 
-let supportDetails = {
-  url: originalSupportUrl,
-  email: originalSupportEmail,
-};
-
-export function setSupportDetails(details) {
-  assign(supportDetails, details);
-}
-
+// use this utility function to replace hardcoded email in transifex translations
 export function replaceSupportEmail(str) {
   return str.replace(originalSupportEmail, supportDetails.email);
-}
-
-export function supportUrl() {
-  return supportDetails.url;
 }
 
 export function currentLang() {
   return cookie.load(LANGUAGE_COOKIE_NAME) || 'en';
 }
-
 
 log.t = function () {
   let _t = {};
@@ -161,11 +143,6 @@ export var newId = function(prefix='id') {
 export var randString = function () {
   return Math.random().toString(36).match(/\.(\S{6}).*/)[1];
 };
-
-export function isLibrary(router) {
-  return false;
-  // return !!router.getCurrentPathname().match(/library/);
-}
 
 export function stringToColor(str, prc) {
   // Higher prc = lighter color, lower = darker

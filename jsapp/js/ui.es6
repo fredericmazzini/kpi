@@ -8,9 +8,6 @@ import bem from './bem';
 import {t, assign} from './utils';
 import classNames from 'classnames';
 
-var hotkey = require('react-hotkey');
-hotkey.activate();
-
 class SearchBox extends React.Component {
   constructor (props) {
     super(props);
@@ -52,11 +49,6 @@ class Modal extends React.Component {
   constructor (props) {
     super(props);
     autoBind(this);
-  }
-  handleHotkey (evt) {
-    if (evt.keyCode === 27) {
-      this.props.onClose.call(evt);
-    }
   }
   backdropClick (evt) {
     if (evt.currentTarget === evt.target) {
@@ -101,7 +93,7 @@ class Modal extends React.Component {
             <div className="modal-header">
               {this.renderTitle()}
               <a className="modal-x" type="button" onClick={this.props.onClose}>
-                <i className="k-icon-close"></i>
+                <i className="k-icon-close"/>
               </a>
             </div>
             {this.props.children}
@@ -111,8 +103,6 @@ class Modal extends React.Component {
     );
   }
 };
-
-reactMixin(Modal.prototype, hotkey.Mixin('handleHotkey'));
 
 class Footer extends React.Component {
   constructor(props) {
@@ -218,7 +208,7 @@ class PopoverMenu extends React.Component {
   toggle(evt) {
     var isBlur = evt.type === 'blur',
         $popoverMenu;
-    
+
 
     if (this.state.popoverVisible || isBlur) {
         $popoverMenu = $(evt.target).parents('.popover-menu').find('.popover-menu__content');
@@ -248,7 +238,7 @@ class PopoverMenu extends React.Component {
       if ($assetListHeight - $assetRowOffset < 150) {
         this.setState({
           placement: 'above',
-        });        
+        });
       }
     }
   }

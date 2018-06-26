@@ -3,6 +3,7 @@
 # 😬
 
 import re
+import sys
 import copy
 import json
 import logging
@@ -27,13 +28,16 @@ from formpack import FormPack
 from formpack.utils.flatten_content import flatten_content
 from formpack.utils.json_hash import json_hash
 from formpack.utils.spreadsheet_content import flatten_to_spreadsheet_content
+from asset_version import AssetVersion
 from kpi.utils.standardize_content import (standardize_content,
                                            needs_standardization,
                                            standardize_content_in_place)
 from kpi.utils.autoname import (autoname_fields_in_place,
                                 autovalue_choices_in_place)
+from kpi.constants import ASSET_TYPES, ASSET_TYPE_BLOCK,\
+    ASSET_TYPE_QUESTION, ASSET_TYPE_SURVEY, ASSET_TYPE_TEMPLATE
 from .object_permission import ObjectPermission, ObjectPermissionMixin
-from ..fields import KpiUidField
+from ..fields import KpiUidField, LazyDefaultJSONBField
 from ..utils.asset_content_analyzer import AssetContentAnalyzer
 from ..utils.sluggify import sluggify_label
 from ..utils.kobo_to_xlsform import (to_xlsform_structure,
@@ -54,17 +58,6 @@ from ..utils.random_id import random_id
 from ..deployment_backends.mixin import DeployableMixin
 from kobo.apps.reports.constants import (SPECIFIC_REPORTS_KEY,
                                          DEFAULT_REPORTS_KEY)
-
-
-ASSET_TYPES = [
-    ('text', 'text'),               # uncategorized, misc
-
-    ('question', 'question'),       # has no name
-    ('block', 'block'),             # has a name, but no settings
-    ('survey', 'survey'),           # has name, settings
-
-    ('empty', 'empty'),             # useless, probably should be pruned
-]
 
 
 # TODO: Would prefer this to be a mixin that didn't derive from `Manager`.
@@ -402,8 +395,13 @@ class XlsExportable(object):
                 cur_sheet = workbook.add_sheet(sheet_name)
                 _add_contents_to_sheet(cur_sheet, contents)
         except Exception as e:
-            raise Exception("asset.content improperly formatted for XLS "
-                            "export: %s" % repr(e))
+            six.reraise(
+                Exception,
+                "asset.content improperly formatted for XLS "
+                "export: %s" % repr(e),
+                sys.exc_info()[2]
+            )
+
         string_io = StringIO.StringIO()
         workbook.save(string_io)
         string_io.seek(0)
@@ -423,8 +421,10 @@ class Asset(ObjectPermissionMixin,
     summary = JSONField(null=True, default=dict)
     report_styles = JSONBField(default=dict)
     report_custom = JSONBField(default=dict)
+    map_styles = LazyDefaultJSONBField(default=dict)
+    map_custom = LazyDefaultJSONBField(default=dict)
     asset_type = models.CharField(
-        choices=ASSET_TYPES, max_length=20, default='survey')
+        choices=ASSET_TYPES, max_length=20, default=ASSET_TYPE_SURVEY)
     parent = models.ForeignKey(
         'Collection', related_name='assets', null=True, blank=True)
     owner = models.ForeignKey('auth.User', related_name='assets', null=True)
@@ -555,7 +555,7 @@ class Asset(ObjectPermissionMixin,
                 settings['id_string'] = id_string
             if not _title:
                 _title = filename
-        if self.asset_type != 'survey':
+        if not self.asset_type in [ASSET_TYPE_SURVEY, ASSET_TYPE_TEMPLATE]:
             # instead of deleting the settings, simply clear them out
             self.content['settings'] = {}
 
@@ -575,12 +575,12 @@ class Asset(ObjectPermissionMixin,
         self._populate_summary()
 
         # infer asset_type only between question and block
-        if self.asset_type in ['question', 'block']:
+        if self.asset_type in [ASSET_TYPE_QUESTION, ASSET_TYPE_BLOCK]:
             row_count = self.summary.get('row_count')
             if row_count == 1:
-                self.asset_type = 'question'
+                self.asset_type = ASSET_TYPE_QUESTION
             elif row_count > 1:
-                self.asset_type = 'block'
+                self.asset_type = ASSET_TYPE_BLOCK
 
         self._populate_report_styles()
 
@@ -601,11 +601,21 @@ class Asset(ObjectPermissionMixin,
             raise ValueError('no translations available')
         self._rename_translation(self.content, _from, _to)
 
-    def to_clone_dict(self, version_uid=None):
-        if version_uid:
-            version = self.asset_versions.get(uid=version_uid)
-        else:
-            version = self.asset_versions.first()
+    def to_clone_dict(self, version_uid=None, version=None):
+        """
+        Returns a dictionary of the asset based on version_uid or version.
+        If `version` is specified, there are no needs to provide `version_uid` and make another request to DB.
+        :param version_uid: string
+        :param version: AssetVersion
+        :return: dict
+        """
+
+        if not isinstance(version, AssetVersion):
+            if version_uid:
+                version = self.asset_versions.get(uid=version_uid)
+            else:
+                version = self.asset_versions.first()
+
         return {
             'name': version.name,
             'content': version.version_content,
@@ -675,11 +685,6 @@ class Asset(ObjectPermissionMixin,
     @transaction.atomic
     def _snapshot(self, regenerate=True):
         asset_version = self.asset_versions.first()
-
-        _note = None
-        if self.asset_type in ['question', 'block']:
-            _note = ('Note: This item is a {} and must be included in '
-                     'a form before deploying'.format(self.asset_type))
 
         try:
             snapshot = AssetSnapshot.objects.get(asset=self,

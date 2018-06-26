@@ -24,4 +24,4 @@ test/compiled/*
 .idea/
 celerybeat-schedule
 deployments.json
-
+.DS_Store

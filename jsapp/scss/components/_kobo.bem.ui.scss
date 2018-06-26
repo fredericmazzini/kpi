@@ -24,6 +24,12 @@
     height: calc(100% - 102px);
     margin-right: 18px;
   }
+
+  > .dropzone,
+  > .library > .dropzone {
+    height: 100%;
+    overflow: hidden;
+  }
 }
 
 @media screen and (max-width: 767px) {
@@ -112,8 +118,6 @@
   opacity: .75;
 }
 
-.message {}
-
 .message--error {
   text-decoration: uppercase;
 }
@@ -147,6 +151,8 @@
     display: table-cell;
     vertical-align: middle;
     text-align: center;
+    padding-left: 20px;
+    padding-right: 20px;
 
     code {
       margin: 20px;
@@ -159,6 +165,11 @@
       overflow: auto;
       word-wrap: break-word;
       text-align: left;
+    }
+
+    .pro-tip {
+      font-size: 14px;
+      margin-top: 30px;
     }
   }
 
@@ -262,6 +273,10 @@
   &.active {
     color: $cool-blue;
   }
+
+  &.divider {
+    border-top: 1px solid lighten($cool-gray, 25%);
+  }
 }
 
 .popover-menu__moveTo {
@@ -306,7 +321,10 @@
   margin: 0px;
 }
 
-.popover-menu--assetrow-menu,
+.popover-menu--assetrow-menu .popover-menu__content {
+  right: 0px;
+}
+
 .popover-menu--formLanding-menu {
   margin-left: 4px;
 
@@ -342,9 +360,9 @@
     text-transform: uppercase;
     padding-left: 0px;
 
-    &:after {
-      content: '\f107';
-      font-family: 'FontAwesome';
+    &::after {
+      content: "\f107";
+      font-family: "FontAwesome";
       font-size: 18px;
       margin-left: 5px;
     }
@@ -358,9 +376,9 @@
     text-transform: uppercase;
     padding-left: 0px;
 
-    &:after {
-      content: '\f107';
-      font-family: 'FontAwesome';
+    &::after {
+      content: "\f107";
+      font-family: "FontAwesome";
       font-size: 18px;
       margin-left: 5px;
     }
@@ -392,12 +410,12 @@
       color: $cool-gray;
     }
 
-    &:after {
+    &::after {
       position: absolute;
       right: 10px;
       top: 8px;
-      content: '\f0d7';
-      font-family: 'FontAwesome';
+      content: "\f0d7";
+      font-family: "FontAwesome";
       font-size: 16px;
     }
   }
@@ -465,7 +483,7 @@ iframe {
 
 // modal forms
 .form-modal__item {
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 
   &--sector, &--country {
     width: 50%;
@@ -514,7 +532,7 @@ iframe {
   select,
   textarea {
     width: 100%;
-    padding: 6px 0px;
+    padding: 4px 0px;
     font-size: 15px;
     border: 1px solid transparent;
     border-bottom-color: $divider-color;
@@ -537,12 +555,6 @@ iframe {
     vertical-align: top;
   }
 
-  .Select.is-focused {
-    .Select-control {
-      box-shadow: none;
-    }
-  }
-
   .Select-control {
     border: none;
     border-bottom: 1px solid $divider-color;
@@ -551,15 +563,17 @@ iframe {
     height: 33px;
     font-size: 15px;
 
+    .Select.is-focused & {
+      box-shadow: none;
+    }
+
     .Select-placeholder {
-      padding-left: 0px;
       color: $cool-gray;
       font-size: 15px;
     }
 
     .Select-value {
       color: $cool-gray;
-      padding-left: 0px;
       font-size: 15px;
     }
 
@@ -650,6 +664,49 @@ span.svg-icon {
   border-radius: 8px;
 }
 
+// active dropzone element (above list while dragging)
+.dropzone-active-overlay {
+  display: none;
+  position: absolute;
+  width: 100%;
+  height: 120px;
+  top: 50%;
+  margin-top: -60px;
+  left: 0;
+  z-index: 2;
+  text-align: center;
+  font-size: 18px;
+
+  i {
+    font-size: 64px;
+    display: block;
+    margin: 0 auto;
+    margin-bottom: 10px;
+    color: $cool-blue;
+  }
+}
+
+.dropzone-active {
+  position: relative;
+  min-height: calc(100% - 4px);
+
+  &:after {
+    width: calc(100% - 4px);
+    height: calc(100% - 4px);
+    position: absolute;
+    left: 0;
+    top: 0;
+    content: '';
+    background: rgba(255, 255, 255, 0.7);
+    border: 2px solid $cool-blue;
+    z-index: 1;
+  }
+
+  .dropzone-active-overlay {
+    display: block;
+  }
+}
+
 // Checkboxes
 
 // Remove default checkbox
@@ -687,7 +744,7 @@ span.svg-icon {
 
   + label:before,
   + label:after {
-    content: '';
+    content: "";
     left: 0;
     position: absolute;
 
@@ -735,7 +792,7 @@ span.svg-icon {
       transform-origin: 100% 100%;
     }
 
-    + label:after {
+    + label::after {
       top: 0;
       width: 20px;
       height: 20px;

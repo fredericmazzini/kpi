@@ -51,6 +51,12 @@ actions.auth = Reflux.createActions({
       'failed'
     ]
   },
+  getEnvironment: {
+    children: [
+      'completed',
+      'failed'
+    ]
+  },
 });
 
 actions.survey = Reflux.createActions({
@@ -241,6 +247,12 @@ actions.permissions = Reflux.createActions({
       'failed'
     ]
   },
+  copyPermissionsFrom: {
+    children: [
+      'completed',
+      'failed'
+    ]
+  },
   assignPublicPerm: {
     children: [
       'completed',
@@ -268,7 +280,13 @@ actions.misc = Reflux.createActions({
       'completed',
       'failed'
     ]
-  }
+  },
+  getServerEnvironment: {
+    children: [
+      'completed',
+      'failed',
+    ]
+  },
 });
 
 
@@ -290,9 +308,15 @@ actions.misc.updateProfile.failed.listen(function(){
   notify(t('failed to update profile'), 'error');
 });
 
+actions.misc.getServerEnvironment.listen(function(){
+  dataInterface.serverEnvironment()
+    .done(actions.misc.getServerEnvironment.completed)
+    .fail(actions.misc.getServerEnvironment.failed);
+});
+
 actions.resources.createImport.listen(function(contents){
   if (contents.base64Encoded) {
-    dataInterface.postCreateBase64EncodedImport(contents)
+    dataInterface.postCreateImport(contents)
       .done(actions.resources.createImport.completed)
       .fail(actions.resources.createImport.failed);
   } else if (contents.content) {
@@ -335,10 +359,8 @@ actions.resources.listTags.listen(function(data){
 });
 
 actions.resources.listTags.completed.listen(function(results){
-  if (results.next) {
-    if (window.trackJs) {
-      window.trackJs.track('MAX_TAGS_EXCEEDED: Too many tags');
-    }
+  if (results.next && window.Raven) {
+    Raven.captureMessage('MAX_TAGS_EXCEEDED: Too many tags');
   }
 });
 
@@ -476,6 +498,22 @@ actions.reports.setCustom.listen(function(assetId, details){
     .fail(actions.reports.setCustom.failed);
 });
 
+actions.table = Reflux.createActions({
+  updateSettings: {
+    children: [
+      'completed',
+      'failed',
+    ]
+  }
+});
+
+actions.table.updateSettings.listen(function(assetId, settings){
+  dataInterface.patchAsset(assetId, {
+    settings: JSON.stringify(settings),
+  }).done(actions.table.updateSettings.completed)
+    .fail(actions.table.updateSettings.failed);
+});
+
 actions.resources.createResource.listen(function(details){
   dataInterface.createResource(details)
     .done(function(asset){
@@ -577,6 +615,16 @@ actions.permissions.assignPerm.completed.listen(function(val){
   actions.resources.loadAsset({url: val.content_object});
 });
 
+// copies permissions from one asset to other
+actions.permissions.copyPermissionsFrom.listen(function(sourceUid, targetUid) {
+  dataInterface.copyPermissionsFrom(sourceUid, targetUid)
+    .done((response) => {
+      actions.resources.loadAsset({id: targetUid});
+      actions.permissions.copyPermissionsFrom.completed();
+    })
+    .fail(actions.permissions.copyPermissionsFrom.failed);
+});
+
 actions.permissions.removePerm.listen(function(details){
   if (!details.content_object_uid) {
     throw new Error('removePerm needs a content_object_uid parameter to be set');
@@ -652,6 +700,18 @@ actions.auth.changePassword.completed.listen(() => {
 actions.auth.changePassword.failed.listen(() => {
   notify(t('failed to change password'), 'error');
 });
+
+actions.auth.getEnvironment.listen(function(){
+  dataInterface.environment()
+    .done((data)=>{
+      actions.auth.getEnvironment.completed(data);
+    })
+    .fail(actions.auth.getEnvironment.failed);
+});
+actions.auth.getEnvironment.failed.listen(() => {
+  notify(t('failed to load environment data'), 'error');
+});
+
 
 actions.resources.loadAsset.listen(function(params){
   var dispatchMethodName;

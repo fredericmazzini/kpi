@@ -150,21 +150,39 @@
   .form-modal__group {
     display: flex;
     justify-content: space-between;
+    margin-bottom: 20px;
 
-    &--validation-status {
-      justify-content: flex-end;
-      align-items: center;
-      margin-bottom: 20px;
+    .switch--label-language,
+    .switch--validation-status {
+      width: 50%;
+      text-align: left;
 
-      input {
-        min-width: 100px;
+      label, div.Select {
+        display: inline-block;
+        vertical-align: middle;
       }
 
-      .Select {
-        margin-left: 10px;
-        text-align: left;
-        min-width: 120px;
+      label {
+        margin-right: 12px;
       }
+    }
+
+    .switch--validation-status {
+      width: 100%;
+      text-align: right;
+    }
+
+    .switch--label-language + .switch--validation-status {
+      width: 50%;
+    }
+
+    input {
+      min-width: 100px;
+    }
+
+    .Select {
+      text-align: left;
+      min-width: 120px;
     }
   }
 
@@ -172,6 +190,10 @@
     a {
       display: inline-block;
       cursor: pointer;
+
+      &:first-child {
+        padding-left: 0px;
+      }
     }
   }
 
@@ -324,150 +346,125 @@
   cursor: pointer;
 }
 
-// alertify overrides
+// create new project modal steps
+.form-modal__item--upload-note {
+  background: #F8F8F8;
+  padding: 20px 30px 10px 30px;
+  margin: -30px -35px;
+  margin-bottom: 20px;
 
-.alertify .ajs-dimmer {
-  background-color: #FFF;
-  opacity: 0.55;
-}
+  i {
+    margin-right: 10px;
+    margin-top: 2px;
+    font-size: 32px;
+    vertical-align: top;
+    display: inline-block;
+  }
 
-.alertify .ajs-dialog {
-  box-shadow: 2px 2px 15px 2px rgba(0, 0, 0, 0.15);
-}
-
-.alertify .ajs-header {
-  margin: 0px;
-  padding: 0px;
-  padding-bottom: 18px;
-  font-size: 18px;
-  font-weight: bold;
-}
-
-.alertify.ajs-closable .ajs-commands button {
-  width: 32px;
-  height: 32px;
-  padding: 0px;
-}
-
-.alertify.ajs-closable .ajs-commands button.ajs-close {
-  background: transparent;
-  font-size: 32px;
-  color: lighten($cool-gray, 20%);
-
-  &:hover {
-    color: $cool-gray;
+  label.long {
+    font-size: 15px;
+    vertical-align: middle;
+    display: inline-block;
+    width: calc(100% - 48px);
   }
 }
 
-.alertify.ajs-closable .ajs-commands button.ajs-close:before {
-  content: '\E806';
-  font-family: 'k-icons';
-}
-
-.alertify.ajs-closable .ajs-commands {
-  margin: 0px;
-  top: 20px;
-  right: 20px;
-  padding: 0px;
-}
-
-.alertify .ajs-body .ajs-content {
-  padding: 0px;
-
-  pre {
-    max-height: 300px;
-    overflow: auto;
-    word-wrap: break-word;
-    max-width: 100%;
-    padding-right: 20px;
-    white-space: initial;
-    font-size: 12px;
-  }
-}
-
-.alertify .ajs-dialog {
-  max-width: 550px;
-  padding: 30px 30px 0 30px;
-}
-
-.alertify .ajs-footer {
-  margin: -4px;
-  padding: 17px 0px;
-
-  .ajs-buttons.ajs-primary {
-    text-align: right;
+.form-modal__item--newForm-step2 {
+  .intro {
+    padding-bottom: 20px;
+    text-align: left;
   }
 
-  button {
-    @extend .mdl-button;
+  .form-modal__item--new-project--buttons {
+    margin: 30px 0px 20px 0px;
+    display: flex;
+    justify-content: space-around;
 
-    text-transform: uppercase;
-    padding-left: 20px;
-    padding-right: 20px;
+    button {
+      border: 1px solid $divider-color;
+      padding: 20px 10px;
+      background: #F8F8F8;
+      border-radius: 4px;
+      color: $cool-gray;
+      cursor: pointer;
+      margin: 0px 10px;
+      flex-basis: 0;
+      flex-grow: 1;
 
-    &.ajs-ok {
-      @extend .mdl-button--colored, .mdl-button--raised;
-    }
+      @media screen and (min-width: 768px) {
+        min-width: 200px;
+      }
 
-    &.ajs-cancel {
-      @extend .mdl-button--colored;
+      @media screen and (min-width: 960px) {
+        min-width: 220px;
+        padding: 20px;
+      }
 
-      &:focus, &:focus:not(:active) {
-        background: transparent;
+      i {
+        display: block;
+        margin: 0 auto;
+        font-size: 48px;
+      }
+
+      &:hover {
+        color: $cool-blue;
+        border-color: $cool-blue;
+
+        i {
+          color: $cool-blue;
+        }
       }
     }
   }
 }
 
-.alertify-notifier {
-  .ajs-message,
-  .ajs-message.ajs-error,
-  .ajs-message.ajs-success,
-  .ajs-message.ajs-warning {
-    background: #484b5a;
-    color: white;
-    padding: 17px 24px;
-    padding-right: 44px;
-    width: auto;
-    min-width: 320px;
-    max-width: 460px;
-    line-height: 1.3em;
+.form-modal__item--newForm-step3 {
+  .dropzone {
+    background: #F5F5F5;
+    margin: 20px 0px 40px 0;
+    padding: 30px;
+    border: 2px dashed $divider-color;
+    cursor: pointer;
+    border-radius: 6px;
+    text-align: center;
+
+    i {
+      display: block;
+      margin: 0 auto;
+      font-size: 72px;
+      opacity: 0.5;
+    }
+
+    &:hover {
+      border-color: $cool-blue;
+    }
+
+    &.dropzone-active {
+      border-color: $cool-blue;
+    }
+
+    &.dropzone-reject {
+      border-color: $cool-red;
+    }
   }
 
-  .ajs-message .ajs-close {
-    background-image: none;
-    background: transparent;
-    right: 15px;
-    top: 50%;
-    margin-top: -10px;
-    opacity: 0.5;
+  .form-modal__item--url-import {
+    margin: 30px 0px;
 
-    @extend .k-icon, .k-icon-close;
-
-    color: white;
-  }
-}
-
-.alertify-toggle {
-  // border:2px solid red;
-  display: block;
-  padding-bottom: 5px;
-  padding-top: 5px;
-
-  input {
-    margin-right: 5px;
+    button {
+      margin-top: 20px;
+      float: right;
+    }
   }
 
-  &:first-child {
-    padding-top: 15px;
-  }
+  .form-view__link--step3-back {
+    font-size: 14px;
+    color: $cool-blue;
+    opacity: 1;
 
-  &.alertify-toggle-important {
-    margin-top: 20px;
-    padding-top: 20px;
-    padding-bottom: 20px;
-    border-top: 1px solid #EDEDED;
-    font-weight: bold;
+    &:hover {
+      opacity: 0.8;
+    }
   }
 }
 
